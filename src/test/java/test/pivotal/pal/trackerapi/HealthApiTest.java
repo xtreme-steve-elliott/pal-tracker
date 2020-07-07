@@ -42,6 +42,28 @@ public class HealthApiTest {
         assertThat(healthJson.read("$.components.backingService.status", String.class)).isEqualTo("DOWN");
     }
 
+    @Test
+    public void readinessProbeTest() {
+        ResponseEntity<String> response = this.restTemplate.getForEntity("/actuator/health/readiness", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        DocumentContext healthJson = parse(response.getBody());
+
+        assertThat(healthJson.read("$.status", String.class)).isEqualTo("UP");
+    }
+
+    @Test
+    public void livenessProbeTest() {
+        ResponseEntity<String> response = this.restTemplate.getForEntity("/actuator/health/liveness", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        DocumentContext healthJson = parse(response.getBody());
+
+        assertThat(healthJson.read("$.status", String.class)).isEqualTo("UP");
+    }
+
     private ResponseEntity<Void> postSimulateFailure() {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set("content-type", "application/json");
