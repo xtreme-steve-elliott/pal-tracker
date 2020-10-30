@@ -18,4 +18,10 @@ spec:
     spec:
       containers:
         - name: pal-tracker-container
-          image: steveelliottvmware/pal-tracker:v0
+          image: steveelliottvmware/pal-tracker:v1
+          env:
+            - name: WELCOME_MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: pal-tracker
+                  key: welcome.message
