@@ -18,7 +18,15 @@ spec:
     spec:
       containers:
         - name: pal-tracker-container
-          image: steveelliottvmware/pal-tracker:v1
+          image: steveelliottvmware/pal-tracker:v3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/bin/sleep", "10" ]
           env:
             - name: WELCOME_MESSAGE
               valueFrom:
