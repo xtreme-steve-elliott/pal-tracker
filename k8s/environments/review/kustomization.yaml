@@ -1,0 +1,8 @@
+bases:
+  - ../../base
+patchesStrategicMerge:
+  - configmap.yaml
+  - deployment.yaml
+  - ingress.yaml
+namespace: review
+nameSuffix: -review

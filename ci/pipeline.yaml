@@ -1,0 +1,98 @@
+jobs:
+  - name: build-pack-and-publish
+    plan:
+      - put: version
+        params: {bump: patch}
+      - get: source-code
+        trigger: true
+      - task: compile-test
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: pivotaleducation/boot-build
+          inputs:
+            - name: source-code
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                cd source-code
+                ./gradlew test
+      - task: pack-and-publish
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: pivotaleducation/pack-and-publish
+          inputs:
+            - name: source-code
+            - name: version
+          run:
+            path: bash
+            args:
+              - -exc
+              - |
+                source /opt/resource/common.sh
+                start_docker "5" "5" "" ""
+
+                BUILD_NUMBER=`cat version/number`
+
+                cd source-code
+                ./gradlew bootBuildImage --imageName=((DOCKER_HUB_USERNAME))/pal-tracker:build-${BUILD_NUMBER}
+                docker login -u ((DOCKER_HUB_USERNAME)) -p ((DOCKER_HUB_PASSWORD))
+                docker push ((DOCKER_HUB_USERNAME))/pal-tracker:build-${BUILD_NUMBER}
+
+  - name: deploy-to-review
+    plan:
+      - get: source-code
+        trigger: true
+        passed:
+          - build-pack-and-publish
+      - get: version
+        passed:
+          - build-pack-and-publish
+      - task: deploy-to-review
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: pivotaleducation/deploy-to-k8s
+          inputs:
+            - name: source-code
+            - name: version
+          run:
+            path: bash
+            args:
+              - -exc
+              - |
+                mkdir -p ~/.kube
+                echo '((KUBECONFIG))' > ~/.kube/config
+
+                BUILD_NUMBER=`cat version/number`
+
+                grep "concourse.run_number" source-code/k8s/environments/review/deployment.yaml
+                sed -i "s/concourse.run_number/${BUILD_NUMBER}/g" source-code/k8s/environments/review/deployment.yaml
+                kubectl apply -k source-code/k8s/environments/review
+
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: https://github.com/((GITHUB_USERNAME))/pal-tracker-k8s.git
+      branch: master
+  - name: version
+    type: semver
+    source:
+      initial_version: "0.0.1"
+      driver: git
+      uri: https://github.com/((GITHUB_USERNAME))/pal-tracker-k8s.git
+      branch: build
+      file: number
+      username: ((GITHUB_USERNAME))
+      password: ((GITHUB_PASSWORD))
