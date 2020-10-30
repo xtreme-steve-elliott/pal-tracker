@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: pal-tracker
+spec:
+  rules:
+    - host: development.tracker.elliottst.k8spal
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: pal-tracker
+              servicePort: 8080
