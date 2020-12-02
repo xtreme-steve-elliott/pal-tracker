@@ -20,6 +20,12 @@ jobs:
               - -exc
               - |
                 cd source-code
+
+                service postgresql start
+
+                sudo -u postgres psql -f databases/tracker/create_databases.sql
+                flyway -url="jdbc:postgresql://localhost:5432/tracker_test" -locations=filesystem:databases/tracker migrate -user=tracker -password=password
+
                 ./gradlew test
       - task: pack-and-publish
         privileged: true
@@ -47,12 +53,41 @@ jobs:
                 docker login -u ((DOCKER_HUB_USERNAME)) -p ((DOCKER_HUB_PASSWORD))
                 docker push ((DOCKER_HUB_USERNAME))/pal-tracker:build-${BUILD_NUMBER}
 
+  - name: migrate-review-db
+    plan:
+      - get: source-code
+        trigger: true
+        passed:
+          - build-pack-and-publish
+      - get: version
+        passed:
+          - build-pack-and-publish
+      - task: migrate-db
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: pivotaleducation/boot-build
+          inputs:
+            - name: source-code
+            - name: version
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                cd source-code
+                flyway -url="jdbc:postgresql://((REVIEW_DB_SERVER))/((REVIEW_DB_NAME))"
+
+
   - name: deploy-to-review
     plan:
       - get: source-code
         trigger: true
         passed:
           - build-pack-and-publish
+          - migrate-review-db
       - get: version
         passed:
           - build-pack-and-publish
