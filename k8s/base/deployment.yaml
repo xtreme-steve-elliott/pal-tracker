@@ -19,6 +19,9 @@ spec:
       containers:
         - name: pal-tracker-container
           image: steveelliottvmware/pal-tracker:v3
+          envFrom:
+            - secretRef:
+                name: db-credentials
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
